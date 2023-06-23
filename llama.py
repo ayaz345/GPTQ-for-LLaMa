@@ -334,6 +334,8 @@ def llama_multigpu(model, gpus, gpu_dist):
 
     cache = {'mask': None, 'position_ids': None}
 
+
+
     class MoveModule(nn.Module):
 
         def __init__(self, module, invalidate_cache):
@@ -354,16 +356,21 @@ def llama_multigpu(model, gpus, gpu_dist):
             if cache['position_ids'] is None or cache['position_ids'].device != self.dev or self.invalidate_cache:
                 cache['position_ids'] = kwargs['position_ids'].to(self.dev)
             kwargs['position_ids'] = cache['position_ids']
-            
-            tmp = self.module(*inp, **kwargs)
-            return tmp
+
+            return self.module(*inp, **kwargs)
+
 
     layers = model.model.layers
     from math import ceil
     if not gpu_dist:
         pergpu = ceil(len(layers) / len(gpus))
         for i in range(len(layers)):
-            layers[i] = MoveModule(layers[i].to(0 if i == 0 or i == len(layers) -1 else gpus[(i-1) // pergpu]), i==0)
+            layers[i] = MoveModule(
+                layers[i].to(
+                    0 if i in [0, len(layers) - 1] else gpus[(i - 1) // pergpu]
+                ),
+                i == 0,
+            )
     else:
         assert gpu_dist[0] >= 2, "At least two layers must be on GPU 0."
         assigned_gpus = [0] * (gpu_dist[0]-1)
@@ -498,9 +505,9 @@ if __name__ == '__main__':
             llama_multigpu(model, gpus, gpu_dist)
         else:
             model = model.to(DEV)
-        if args.benchmark:
-            input_ids = next(iter(dataloader))[0][:, :args.benchmark]
-            benchmark(model, input_ids, check=args.check)
+    if args.benchmark:
+        input_ids = next(iter(dataloader))[0][:, :args.benchmark]
+        benchmark(model, input_ids, check=args.check)
 
     if args.eval:
         datasets = ['wikitext2', 'ptb', 'c4']
@@ -510,7 +517,7 @@ if __name__ == '__main__':
             dataloader, testloader = get_loaders(dataset, seed=args.seed, model=args.model, seqlen=model.seqlen)
             print(dataset)
             llama_eval(model, testloader, DEV)
-    
+
     if args.test_generation:
         gpus = [torch.device('cuda:%d' % i) for i in range(torch.cuda.device_count())]
         if len(gpus) > 1:
@@ -524,7 +531,7 @@ if __name__ == '__main__':
         streamer = TextStreamer(tokenizer)
         with torch.no_grad():
             generated_ids = model.generate(input_ids, streamer=streamer)
-        
+
 
 
     if args.quant_directory is not None:

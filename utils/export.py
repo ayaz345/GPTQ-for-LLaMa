@@ -14,16 +14,16 @@ def export_quant_table(quantizers: dict, quant_dir: str, format: str = 'toml'):
     for key, value in quantizers.items():
         quantizer = value[0]
 
-        dump = dict()
+        dump = {}
 
         sym = quantizer.sym
         if not sym:
-            dump['zero'] = save_tensor(name=key + '.zero', tensor=value[2])
-        dump['scale'] = save_tensor(name=key + '.scale', tensor=value[1])
+            dump['zero'] = save_tensor(name=f'{key}.zero', tensor=value[2])
+        dump['scale'] = save_tensor(name=f'{key}.scale', tensor=value[1])
         dump['wbits'] = value[4]
         dump['groupsize'] = value[5]
         if value[5] > 0:
-            dump['group_ids'] = save_tensor(name=key + '.group_ids', tensor=value[3])
+            dump['group_ids'] = save_tensor(name=f'{key}.group_ids', tensor=value[3])
 
         dump['sym'] = sym
         dump['perchannel'] = quantizer.perchannel

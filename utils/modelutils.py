@@ -9,7 +9,11 @@ def find_layers(module, layers=[nn.Conv2d, nn.Linear], name=''):
         return {name: module}
     res = {}
     for name1, child in module.named_children():
-        res.update(find_layers(child, layers=layers, name=name + '.' + name1 if name != '' else name1))
+        res |= find_layers(
+            child,
+            layers=layers,
+            name=f'{name}.{name1}' if name != '' else name1,
+        )
     return res
 
 
@@ -19,7 +23,7 @@ def gen_conditions(_wbits, _groupsize):
     conditions = []
     while True:
         if wbits >= 8:
-            if groupsize == -1 or groupsize == 32:
+            if groupsize in [-1, 32]:
                 break
 
         if groupsize > 32:
@@ -60,7 +64,7 @@ def torch_snr_error(y_pred: torch.Tensor, y_real: torch.Tensor, reduction: str =
     if y_pred.shape != y_real.shape:
         raise ValueError(f'Can not compute snr loss for tensors with different shape. '
                          f'({y_pred.shape} and {y_real.shape})')
-    reduction = str(reduction).lower()
+    reduction = reduction.lower()
 
     if y_pred.ndim == 1:
         y_pred = y_pred.unsqueeze(0)
@@ -75,9 +79,9 @@ def torch_snr_error(y_pred: torch.Tensor, y_real: torch.Tensor, reduction: str =
 
     if reduction == 'mean':
         return torch.mean(snr)
-    elif reduction == 'sum':
-        return torch.sum(snr)
     elif reduction == 'none':
         return snr
+    elif reduction == 'sum':
+        return torch.sum(snr)
     else:
-        raise ValueError(f'Unsupported reduction method.')
+        raise ValueError('Unsupported reduction method.')

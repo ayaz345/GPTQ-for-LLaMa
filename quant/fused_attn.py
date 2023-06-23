@@ -48,7 +48,7 @@ def rotate_half_kernel(
     embed_offsets = (row * HEAD_DIM + col) + col_offsets
     x_ptrs = (qk_seq_ptr + batch_seq * qk_seq_stride) + embed_offsets
 
-    for k in range(0, BLOCK_HEIGHT):
+    for _ in range(0, BLOCK_HEIGHT):
         x = tl.load(x_ptrs).to(tl.float32)
         y = tl.load(x_ptrs + HALF_HEAD).to(tl.float32)
         out_x = x * cos - y * sin
@@ -180,7 +180,13 @@ def make_quant_attn(model):
         g_idx = torch.cat([q_proj.g_idx, k_proj.g_idx, v_proj.g_idx], dim=0)
         bias = torch.cat([q_proj.bias, k_proj.bias, v_proj.bias], dim=0) if q_proj.bias is not None else None
 
-        qkv_layer = QuantLinear(q_proj.bits, q_proj.groupsize, q_proj.infeatures, q_proj.outfeatures + k_proj.outfeatures + v_proj.outfeatures, True if q_proj.bias is not None else False)
+        qkv_layer = QuantLinear(
+            q_proj.bits,
+            q_proj.groupsize,
+            q_proj.infeatures,
+            q_proj.outfeatures + k_proj.outfeatures + v_proj.outfeatures,
+            q_proj.bias is not None,
+        )
         qkv_layer.qweight = qweights
         qkv_layer.qzeros = qzeros
         qkv_layer.scales = scales

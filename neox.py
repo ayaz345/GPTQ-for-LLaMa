@@ -281,6 +281,8 @@ def neox_multigpu(model, gpus):
 
     cache = {'mask': None}
 
+
+
     class MoveModule(nn.Module):
 
         def __init__(self, module):
@@ -295,8 +297,8 @@ def neox_multigpu(model, gpus):
             if cache['mask'] is None or cache['mask'].device != self.dev:
                 cache['mask'] = kwargs['attention_mask'].to(self.dev)
             kwargs['attention_mask'] = cache['mask']
-            tmp = self.module(*inp, **kwargs)
-            return tmp
+            return self.module(*inp, **kwargs)
+
 
     layers = model.gpt_neox.layers
     pergpu = math.ceil(len(layers) / len(gpus))
@@ -405,9 +407,9 @@ if __name__ == '__main__':
             neox_multigpu(model, gpus)
         else:
             model = model.to(DEV)
-        if args.benchmark:
-            input_ids = next(iter(dataloader))[0][:, :args.benchmark]
-            benchmark(model, input_ids, check=args.check)
+    if args.benchmark:
+        input_ids = next(iter(dataloader))[0][:, :args.benchmark]
+        benchmark(model, input_ids, check=args.check)
 
     if args.eval:
         datasets = ['wikitext2', 'ptb', 'c4']
